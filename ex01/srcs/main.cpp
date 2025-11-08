@@ -11,14 +11,19 @@ static int	badUsage();
 // --- main function ---
 int main(int ac, char** av)
 {
-	(void)av;
-
 	if (ac < 2)
-		return (badUsage(), NOK);
+	{
+		badUsage();
+		return (NOK);
+	}
 
-	std::string expression(av[1]);
+	std::string expression;
 
-	if (ac > 2)
+	if (ac == 2)
+	{
+		expression = av[1];
+	}
+	else
 	{
 		std::ostringstream oss;
 		for (int i = 1; i < ac; i++)

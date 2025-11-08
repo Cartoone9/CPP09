@@ -1,14 +1,16 @@
 #include "RPN.hpp"
 
 // --- helper functions declaration ---
-static bool	isValidValue(const std::string& token);
-static bool	isValidOperator(char oper);
-static int	doOperation(int value_1, int value_2, char oper);
-static void	generalError();
-static void	rangeError();
-static void	operatorError();
-static void	remainderError();
-static void	missingOperatorError();
+static bool			isValidValue(const std::string& token, int& value);
+static int			handleOperator(const char oper, std::stack<int>& stack,
+									bool& check_operator);
+static bool			isValidOperator(char oper);
+static long long	doOperation(int value_1, int value_2, char oper);
+static void			rangeError();
+static void			operatorError();
+static void			remainderError();
+static void			divisionByZeroError();
+static void			missingOperatorError();
 
 // --- main function ---
 int	RPN(const std::string& expression)
@@ -20,41 +22,14 @@ int	RPN(const std::string& expression)
 
 	while (parsing_iss >> token)
 	{
-		if (isValidValue(token))
-		{
-			std::istringstream iss_digits(token);
-			int value;
-			if (!(iss_digits >> value))
-			{
-				generalError();
-				return (ERROR);
-			}
+		int	value = 0;
 
+		if (isValidValue(token, value))
 			stack.push(value);
-		}
 		else if (token.size() == 1)
 		{
-			if (!isValidOperator(token[0]) || stack.size() < 2)
-			{
-				operatorError();
+			if (handleOperator(token[0], stack, check_operator) == ERROR)
 				return (ERROR);
-			}
-			if (!check_operator)
-				check_operator = true;
-
-			int	value_2 = stack.top();
-			stack.pop();
-			int	value_1 = stack.top();
-			stack.pop();
-
-			int total = doOperation(value_1, value_2, token[0]);
-			if (total == ERROR)
-			{
-				rangeError();
-				return (ERROR);
-			}
-
-			stack.push(total);
 		}
 		else
 		{
@@ -73,7 +48,10 @@ int	RPN(const std::string& expression)
 		return (ERROR);
 	}
 
-	std::cout << "Result: " << stack.top() << std::endl;
+	std::cout << UNDERLINE "Result:" RESET
+			<< " " REVERSED " " << stack.top() 
+			<< " " RESET << std::endl;
+
 	return (OK);
 }
 
@@ -82,13 +60,12 @@ int	RPN(const std::string& expression)
 
 
 // --- helper functions definition ---
-static bool	isValidValue(const std::string& token)
+static bool	isValidValue(const std::string& token, int& value)
 {
 	if (token.empty())
 		return (false);
 
 	std::istringstream iss_digits(token);
-	int value;
 	if (!(iss_digits >> value))
 		return (false);
 
@@ -96,53 +73,92 @@ static bool	isValidValue(const std::string& token)
 	return (!(iss_digits >> check));
 }
 
+static int	handleOperator(const char oper, std::stack<int>& stack,
+							bool& check_operator)
+{
+	if (!isValidOperator(oper) || stack.size() < 2)
+	{
+		operatorError();
+		return (ERROR);
+	}
+
+	if (!check_operator)
+		check_operator = true;
+
+	int	value_2 = stack.top();
+	stack.pop();
+	int	value_1 = stack.top();
+	stack.pop();
+	if (oper == '/' && value_2 == 0)
+	{
+		divisionByZeroError();
+		return (ERROR);
+	}
+
+	long long total = doOperation(value_1, value_2, oper);
+	if (total == ERROR_LL)
+	{
+		rangeError();
+		return (ERROR);
+	}
+
+	stack.push(static_cast<int>(total));
+
+	return (OK);
+}
+
 static bool	isValidOperator(char oper)
 {
-	if (oper != '+' && oper != '-'
-			&& oper != '*' && oper != '/')
-		return (false);
-	else
-		return (true);
+	return (oper == '+' || oper == '-' || oper == '*' || oper == '/');
 }
 
-static int	doOperation(int value_1, int value_2, char oper)
+static long long doOperation(int value_1, int value_2, char oper)
 {
+	long long result = 0;
+
 	if (oper == '+')
-		return (static_cast<long long>(value_1) + static_cast<long long>(value_2) <= INT_MAX ? value_1 + value_2 : ERROR);
+		result = static_cast<long long>(value_1) + value_2;
+	else if (oper == '-')
+		result = static_cast<long long>(value_1) - value_2;
+	else if (oper == '*')
+		result = static_cast<long long>(value_1) * value_2;
+	else if (oper == '/')
+		result = static_cast<long long>(value_1) / value_2;
+	else
+		return (ERROR_LL);
 
-	if (oper == '-')
-		return (static_cast<long long>(value_1) - static_cast<long long>(value_2) >= INT_MIN ? value_1 - value_2 : ERROR);
+	if (result > INT_MAX || result < INT_MIN)
+		return (ERROR_LL);
 
-	if (oper == '*')
-		return (static_cast<long long>(value_1) * static_cast<long long>(value_2) <= INT_MAX ? value_1 * value_2 : ERROR);
-
-	if (oper == '/' && value_2 != 0)
-		return (static_cast<long long>(value_1) / static_cast<long long>(value_2) >= INT_MIN ? value_1 / value_2 : ERROR);
-
-	return (ERROR);
-}
-
-static void	generalError()
-{
-	std::cerr << RED "Error:" RESET << " bad expression." << std::endl;
+	return (result);
 }
 
 static void rangeError()
 {
-	std::cerr << RED "Error:" RESET << " invalid operation and/or expression result outside int range." << std::endl;
+	std::cerr << RED "Error:" RESET
+		<< " invalid operation and/or expression result outside int range." << std::endl;
 }
 
 static void	operatorError()
 {
-	std::cerr << RED "Error:" RESET << " invalid character and/or too many operators." << std::endl;
+	std::cerr << RED "Error:" RESET
+		<< " invalid character and/or too many operators." << std::endl;
 }
 
 static void	remainderError()
 {
-	std::cerr << RED "Error:" RESET << " remainder at the end." << std::endl;
+	std::cerr << RED "Error:" RESET
+		<< " remainder at the end." << std::endl;
+}
+
+static void divisionByZeroError()
+{
+    std::cerr << RED "Error:" RESET
+		<< " division by zero." << std::endl;
 }
 
 static void	missingOperatorError()
 {
-	std::cerr << RED "Error:" RESET << " expression has no operator." << std::endl;
+	std::cerr << RED "Error:" RESET
+		<< " expression has no operator." << std::endl;
 }
