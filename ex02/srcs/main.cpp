@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <vector>
@@ -15,6 +16,8 @@ static void	invalidArg();
 static int	parseArgs(int ac, char** av, std::vector<int>& temp_vec);
 static bool	checkDigits(char* str);
 static void	vectorFordJohnson(std::vector<int>& temp_vec);
+static int	findJacobsthal(int n);
+static bool	comparePairs(const std::pair<int, int>& a, const std::pair<int, int>& b);
 
 // --- main function ---
 int main(int ac, char** av)
@@ -31,10 +34,16 @@ int main(int ac, char** av)
 		return (NOK);
 
 	// DEBUG
-	// for (size_t i = 0; i < temp_vec.size(); i++)
-	// 	std::cout << "Value [" << i << "]: " << temp_vec.at(i) << std::endl;
+	std::cout << "Before:" << std::endl;
+	for (size_t i = 0; i < base_vec.size(); i++)
+		std::cout << "Value [" << i << "]: " << base_vec[i] << std::endl;
 
 	vectorFordJohnson(base_vec);
+
+	// DEBUG
+	std::cout << "After:" << std::endl;
+	for (size_t i = 0; i < base_vec.size(); i++)
+		std::cout << "Value [" << i << "]: " << base_vec[i] << std::endl;
 
 	return (OK);
 }
@@ -102,7 +111,7 @@ static void	vectorFordJohnson(std::vector<int>& base_vec)
 	if (base_vec_len % 2 != 0)
 	{
 		is_odd = true;
-		straggler = base_vec.at(base_vec_len - 1);
+		straggler = base_vec[base_vec_len - 1];
 		base_vec.pop_back();
 		base_vec_len--;
 	}
@@ -115,8 +124,8 @@ static void	vectorFordJohnson(std::vector<int>& base_vec)
 	// and keep a vector of winners aside for recursion
 	for (size_t i = 0; i < base_vec_len; i += 2)
 	{
-		int	first = base_vec.at(i);
-		int	second = base_vec.at(i + 1);
+		int	first = base_vec[i];
+		int	second = base_vec[i + 1];
 
 		if (first > second)
 		{
@@ -132,28 +141,74 @@ static void	vectorFordJohnson(std::vector<int>& base_vec)
 
 	vectorFordJohnson(winners);
 
-	std::vector<int> main_stack = winners;
-	std::vector<int> pend_stack;
+	std::vector<int>						main_chain = winners;
+	std::vector<std::pair<int, size_t> >	pend_chain; // { loser, winner_index }
 
-	for (size_t i = 0; i < main_stack.size(); i++)
+	std::sort(pairs.begin(), pairs.end(), comparePairs);
+
+	for (size_t i = 0; i < main_chain.size(); i++)
 	{
-		for (size_t j = 0; j < pairs.size(); j++)
-		{
-			if (main_stack.at(i) == pairs.at(j).first)
-			{
-				// add second to the pend (looooser)
-				pend_stack.push_back(pairs.at(j).second);
-				// remove the pair to avoid duplicates
-				pairs.erase(pairs.begin() + j);
-				// break and go to the next main element (winner)
-				break;
-			}
-		}
+		pend_chain.push_back(std::make_pair(pairs[i].second, i + 1));
 	}
 
 	// insert pend into main here
-	
+	// first start with the smallest element of the losers
+	// which goes at the beginning
+	main_chain.insert(main_chain.begin(), pend_chain[0].first);
+
+	int	index_jacob = 3;
+	int	curr_jacob = findJacobsthal(index_jacob++);
+	int	prev_jacob = 1;
+
+	while (static_cast<size_t>(prev_jacob) < pend_chain.size())
+	{
+		if (static_cast<size_t>(curr_jacob) > pend_chain.size())
+			curr_jacob = pend_chain.size();
+
+		for (int i = curr_jacob; i > prev_jacob; i--)
+		{
+			int		value = pend_chain[i - 1].first;
+			size_t	limit_index = pend_chain[i - 1].second;
+
+			std::vector<int>::iterator	limit_it = main_chain.begin() + limit_index;
+			std::vector<int>::iterator	pos = std::lower_bound(main_chain.begin(), limit_it, value);
+
+			size_t	insertion_index = std::distance(main_chain.begin(), pos);
+
+			main_chain.insert(pos, value);
+
+			std::vector<std::pair<int, size_t> >::iterator it;
+			std::vector<std::pair<int, size_t> >::iterator it_end = pend_chain.end();
+			for (it = pend_chain.begin(); it != it_end; it++)
+			{
+				if (it->second >= insertion_index)
+					it->second++;
+			}
+		}
+		prev_jacob = curr_jacob;
+		curr_jacob = findJacobsthal(index_jacob++);
+	}
+
 	// if is_odd insert straggler here
-	
-	base_vec = main_stack;
+	if (is_odd)
+	{
+		std::vector<int>::iterator pos = std::lower_bound(main_chain.begin(), main_chain.end(), straggler);
+		main_chain.insert(pos, straggler);
+	}
+
+	base_vec = main_chain;
+}
+
+static int	findJacobsthal(int n)
+{
+	if (n == 0)
+		return (0);
+	if (n == 1)
+		return (1);
+	return (findJacobsthal(n - 1) + (2 * findJacobsthal(n - 2)));
+}
+
+static bool	comparePairs(const std::pair<int, int>& a, const std::pair<int, int>& b)
+{
+	return (a.first < b.first);
 }
