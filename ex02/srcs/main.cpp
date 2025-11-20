@@ -218,9 +218,18 @@ static void	vectorFordJohnson(std::vector<int>& base_vec)
 
 static int	findJacobsthal(int n)
 {
-	if (n == 0)
-		return (0);
-	if (n == 1)
-		return (1);
-	return (findJacobsthal(n - 1) + (2 * findJacobsthal(n - 2)));
+	if (n <= 1)
+		return n;
+
+	int prev = 0; // J(0)
+	int curr = 1; // J(1)
+
+	for (int i = 2; i <= n; i++)
+	{
+		int next = curr + 2 * prev;
+		prev = curr;
+		curr = next;
+	}
+
+	return (curr);
 }
