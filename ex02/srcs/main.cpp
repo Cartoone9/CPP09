@@ -14,6 +14,15 @@
 #define ERROR -1
 
 // --- helper functions declaration ---
+template <typename T>
+static void	containerFordJohnson(T& container, void (*sorting_algo)(T&), bool which);
+template <typename T>
+static void	isSorted(const T& container);
+template <typename T>
+static bool	isSortedCheck(const T& container);
+template <typename T>
+static void	printContainer(T& container);
+
 static void	invalidUsage();
 static void	invalidArg();
 static int	parseArgs(int ac, char** av,
@@ -23,7 +32,7 @@ static void	vectorFordJohnson(std::vector<int>& temp_vec);
 static void	dequeFordJohnson(std::deque<int>& base_deq);
 static int	findJacobsthal(int n);
 
-// --- main function ---
+// --- main functions ---
 int main(int ac, char** av)
 {
 	if (ac < 2)
@@ -38,33 +47,39 @@ int main(int ac, char** av)
 	if (parseArgs(ac, av, base_vec, base_deq) == ERROR)
 		return (NOK);
 
-	// VECTOR	
-	std::clock_t start_time = std::clock();
+	containerFordJohnson(base_vec, vectorFordJohnson, true);
 
-	vectorFordJohnson(base_vec);
-
-	std::clock_t end_time = std::clock();
-	double	duration_ticks = static_cast<double>(end_time - start_time);
-	double	duration_seconds = duration_ticks / CLOCKS_PER_SEC;
-	std::cout << "Time to process a range of "
-		<< base_vec.size() << " with std::vector: "
-		<< std::fixed << std::setprecision(6)
-		<< duration_seconds << " s." << std::endl;
-
-	// DEQUE
-	start_time = std::clock();
-
-	dequeFordJohnson(base_deq);
-
-	end_time = std::clock();
-	duration_ticks = static_cast<double>(end_time - start_time);
-	duration_seconds = duration_ticks / CLOCKS_PER_SEC;
-	std::cout << "Time to process a range of "
-		<< base_vec.size() << " with std::deque: "
-		<< std::fixed << std::setprecision(6)
-		<< duration_seconds << " s." << std::endl;
+	containerFordJohnson(base_deq, dequeFordJohnson, false);
 
 	return (OK);
+}
+
+template <typename T>
+static void	containerFordJohnson(T& container, void (*sorting_algo)(T&), bool which)
+{
+	std::cout << REVERSED << (which ? TEAL : MAGENTA) << "--- " 
+		<< (which ? "VECTOR" : "DEQUE") << " ---\n" RESET << std::endl;
+
+	std::cout << "Elements before: ";
+	printContainer(container);
+
+	std::clock_t start_time = std::clock();
+
+	sorting_algo(container);
+
+	std::clock_t end_time = std::clock();
+
+	std::cout << "Elements after: ";
+	printContainer(container);
+
+	double	duration_ticks = static_cast<double>(end_time - start_time);
+	double	duration_seconds = duration_ticks / CLOCKS_PER_SEC;
+	std::cout << "Time to process a range of " ORANGE
+		<< container.size() << RESET " elements with std::"
+		<< (which ? "vector: " : "deque: ")
+		<< std::fixed << std::setprecision(6)
+		<< UNDERLINE << duration_seconds << " seconds." RESET
+		<< (which ? "\n" : "") << std::endl;
 }
 
 
@@ -154,7 +169,7 @@ static void	vectorFordJohnson(std::vector<int>& base_vec)
 			winners.push_back(first);
 		}
 		else
-		{
+	{
 			orig_pairs.push_back(std::make_pair(second, first));
 			winners.push_back(second);
 		}
@@ -186,8 +201,8 @@ static void	vectorFordJohnson(std::vector<int>& base_vec)
 	for (size_t i = 0; i < main_chain.size(); i++)
 	{
 		pend_chain.push_back(std::make_pair(sorted_pairs[i].second, i + 1)); // shift index by 1
-																	  // to account for the first
-																	  // pend element insertion
+		// to account for the first
+		// pend element insertion
 	}
 
 	// insert pend into main here
@@ -274,7 +289,7 @@ static void	dequeFordJohnson(std::deque<int>& base_deq)
 			winners.push_back(first);
 		}
 		else
-		{
+	{
 			orig_pairs.push_back(std::make_pair(second, first));
 			winners.push_back(second);
 		}
@@ -306,8 +321,8 @@ static void	dequeFordJohnson(std::deque<int>& base_deq)
 	for (size_t i = 0; i < main_chain.size(); i++)
 	{
 		pend_chain.push_back(std::make_pair(sorted_pairs[i].second, i + 1)); // shift index by 1
-																	  // to account for the first
-																	  // pend element insertion
+		// to account for the first
+		// pend element insertion
 	}
 
 	// insert pend into main here
@@ -374,4 +389,56 @@ static int	findJacobsthal(int n)
 	}
 
 	return (curr);
+}
+
+
+
+template <typename T>
+static void	isSorted(const T& container)
+{
+	std::cout << "Sorted? " 
+		<< (isSortedCheck(container) ? GREEN "[OK]" RESET : RED "[NO]" RESET)
+		<< "\n" << std::endl;
+}
+
+template <typename T>
+static bool	isSortedCheck(const T& container)
+{
+
+	typename T::const_iterator it = container.begin();
+	typename T::const_iterator it_end = container.end();
+
+	if (it == it_end || it + 1 == it_end)
+		return (true);
+
+	while (it + 1 != it_end)
+	{
+		if (!(*it <= *(it + 1)))
+			return (false);
+
+		it++;
+	}
+	return (true);
+}
+
+template <typename T>
+static void	printContainer(T& container)
+{
+	size_t	max_elem = 10;
+	size_t	max = (container.size() <= max_elem ? container.size() : max_elem);
+
+	for (size_t i = 0; i < max; i++)
+	{
+		std::cout << container[i];
+		if (i + 1 < max)
+			std::cout << " ";
+		else
+		{
+			if (container.size() > max_elem)
+				std::cout << " [...]";
+			std::cout << std::endl;
+		}
+	}
+
+	isSorted(container);
 }
