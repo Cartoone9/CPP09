@@ -17,7 +17,6 @@ static int	parseArgs(int ac, char** av, std::vector<int>& temp_vec);
 static bool	checkDigits(char* str);
 static void	vectorFordJohnson(std::vector<int>& temp_vec);
 static int	findJacobsthal(int n);
-static bool	comparePairs(const std::pair<int, int>& a, const std::pair<int, int>& b);
 
 // --- main function ---
 int main(int ac, char** av)
@@ -116,10 +115,10 @@ static void	vectorFordJohnson(std::vector<int>& base_vec)
 		base_vec_len--;
 	}
 
-	std::vector<std::pair<int, int> >	pairs;
+	std::vector<std::pair<int, int> >	orig_pairs;
 	std::vector<int>					winners;
 
-	// form the pairs, preorder them so that
+	// form the orig_pairs, preorder them so that
 	// first is always the biggest of the pair
 	// and keep a vector of winners aside for recursion
 	for (size_t i = 0; i < base_vec_len; i += 2)
@@ -129,26 +128,44 @@ static void	vectorFordJohnson(std::vector<int>& base_vec)
 
 		if (first > second)
 		{
-			pairs.push_back(std::make_pair(first, second));
+			orig_pairs.push_back(std::make_pair(first, second));
 			winners.push_back(first);
 		}
 		else
 		{
-			pairs.push_back(std::make_pair(second, first));
+			orig_pairs.push_back(std::make_pair(second, first));
 			winners.push_back(second);
 		}
 	}
 
 	vectorFordJohnson(winners);
 
-	std::vector<int>						main_chain = winners;
-	std::vector<std::pair<int, size_t> >	pend_chain; // { loser, winner_index }
+	std::vector<int>					main_chain = winners;
+	std::vector<std::pair<int, int> >	sorted_pairs;
 
-	std::sort(pairs.begin(), pairs.end(), comparePairs);
+	for (size_t i = 0; i < main_chain.size(); ++i)
+	{
+		int current_winner = main_chain[i];
+		// Find the loser corresponding to this winner.
+		for (size_t j = 0; j < orig_pairs.size(); ++j)
+		{
+			if (orig_pairs[j].first == current_winner)
+			{
+				sorted_pairs.push_back(orig_pairs[j]);
+				// remove the found pair
+				orig_pairs.erase(orig_pairs.begin() + j);
+				break;
+			}
+		}
+	}
+
+	std::vector<std::pair<int, size_t> >	pend_chain; // { loser, winner_index }
 
 	for (size_t i = 0; i < main_chain.size(); i++)
 	{
-		pend_chain.push_back(std::make_pair(pairs[i].second, i + 1));
+		pend_chain.push_back(std::make_pair(sorted_pairs[i].second, i + 1)); // shift index by 1
+																	  // to account for the first
+																	  // pend element insertion
 	}
 
 	// insert pend into main here
@@ -206,9 +223,4 @@ static int	findJacobsthal(int n)
 	if (n == 1)
 		return (1);
 	return (findJacobsthal(n - 1) + (2 * findJacobsthal(n - 2)));
-}
-
-static bool	comparePairs(const std::pair<int, int>& a, const std::pair<int, int>& b)
-{
-	return (a.first < b.first);
 }
